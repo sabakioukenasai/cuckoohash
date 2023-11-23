@@ -1,6 +1,7 @@
 use std::mem::size_of;
 use ring::{digest, rand};
 
+/// 输入字节串，将其映射成两个在 [0, `range`-1] 范围内呃正整数
 pub fn get_double_hash(key: &[u8], range: usize) -> (usize, usize)
 {
 	let hash = digest::digest(&digest::SHA256, key);
@@ -11,10 +12,14 @@ pub fn get_double_hash(key: &[u8], range: usize) -> (usize, usize)
 		std::ptr::write(&mut h1 as &mut usize, *hash);
 		std::ptr::write(&mut h2 as &mut usize, *hash.wrapping_add(1));
 	}
-
-	(h1 % range, h2 % range)
+	if range != 0 {
+		(h1 % range, h2 % range)
+	} else {
+		(h1, h2)
+	}
 }
 
+/// 返回另一个 Hash 值 
 pub fn get_another_hash(data: &[u8], range: usize, hash: usize) -> usize 
 {
 	let (h1, h2) = get_double_hash(data, range);
@@ -25,11 +30,17 @@ pub fn get_another_hash(data: &[u8], range: usize, hash: usize) -> usize
 	}
 }
 
-pub fn get_random() -> usize {
+/// 返回 [0, `range` - 1] 范围内的一个随机数
+pub fn get_random(range: usize) -> usize {
 	let rng = rand::SystemRandom::new();
-	usize::from_le_bytes(
+	let res = usize::from_le_bytes(
 		rand::generate::<[u8; size_of::<usize>()]>(&rng).unwrap().expose()
-	)
+	);
+	if range != 0 {
+		res % range
+	} else {
+		res
+	}
 }
 
 #[cfg(test)]
@@ -39,7 +50,7 @@ use super::*;
 
 	#[test]
 	fn test_get_random() {
-		println!("{:?}", get_random().to_le_bytes());
+		println!("{:?}", get_random(87).to_le_bytes());
 	}
 
 	#[test]
