@@ -66,7 +66,7 @@ impl Bucket {
 	}
 
 	/// Check if there are empty `Bin` in the `Bucket`
-	pub fn is_available(&self) -> bool {
+	pub fn is_empty(&self) -> bool {
 		self.buffer.iter().any(|bin| bin.is_empty())
 	}
 
