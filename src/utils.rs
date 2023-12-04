@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use ring::{digest, rand};
 
-/// get 2 hash results
+/// gets 2 hash results
 pub fn get_two_hash(key: &[u8], range: usize) -> (usize, usize)
 {
 	assert!(range != 0);
@@ -17,7 +17,7 @@ pub fn get_two_hash(key: &[u8], range: usize) -> (usize, usize)
 	(h0 % range, h1 % range)
 }
 
-/// get 3 hash results
+/// gets 3 hash results
 pub fn get_three_hash(key: &[u8], range: usize) -> (usize, usize, usize)
 {
 	assert!(range != 0);
@@ -34,7 +34,7 @@ pub fn get_three_hash(key: &[u8], range: usize) -> (usize, usize, usize)
 	(h0 % range, h1 % range, h2 % range)
 }
 
-/// return an alternate hash not equal to the given one
+/// returns an alternate hash not equal to the given one
 pub fn get_alt_hash(data: &[u8], range: usize, hash: usize) -> usize
 {
 	let hset = get_two_hash(data, range);
@@ -45,7 +45,7 @@ pub fn get_alt_hash(data: &[u8], range: usize, hash: usize) -> usize
 	}
 }
 
-/// return an alternate hash not equal to the given one
+/// returns an alternate hash not equal to the given one
 pub fn get_alt_hash_three(data: &[u8], range: usize, hash: usize) -> usize
 {
 	let hset = get_three_hash(data, range);

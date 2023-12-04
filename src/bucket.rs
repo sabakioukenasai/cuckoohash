@@ -1,7 +1,8 @@
 use crate::utils as ut;
 
-const ELEM_BIT_WIDTH: usize = 32;
-const BIN_SIZE: usize = (ELEM_BIT_WIDTH + 7) >> 3;
+/// 默认元素大小
+const DEFAULT_ELEM_BIT_WIDTH: usize = 32;
+const BIN_SIZE: usize = (DEFAULT_ELEM_BIT_WIDTH + 7) >> 3;
 const BUCKET_SIZE: usize = 1;
 
 const DUMMY_BIN: Bin = Bin {

@@ -4,6 +4,8 @@ use super::*;
 
 use std::iter::repeat;
 
+/// A data storage hash table with immutable size, using cuckoo strategy
+/// to handle collisions.
 pub struct CuckooHashTable{
 	buffer: Box<[Bucket]>,
 	stash: Vec<Bin>,
@@ -15,17 +17,53 @@ pub struct CuckooHashTable{
 
 impl CuckooHashTable
 {
-	/// 创建一个能容纳cap个元素的的Cuckoo Hash Table
+	/// Constructs a new, empty two-way cuckoohash table with default capacity 
+	/// and stash size.
+	/// 
+	/// Renamed as `StandardCuckoo` as each of the elements inserted into the
+	/// table has two alternative locations.
+	/// 
+	/// # Example
+	/// ```rust
+	/// use cuckoohash::StandardCuckoo;
+	/// 
+	/// let ctb = StandardCuckoo::new();
+	/// ```
+	pub fn new() -> Self {
+		Self {
+			buffer: repeat(Bucket::new())
+				.take(DEFAULT_CAPACITY)
+				.collect::<Vec<_>>()
+				.into_boxed_slice(),
+			capacity: DEFAULT_CAPACITY,
+			stash: Vec::<Bin>::with_capacity(DEFAULT_STASH_SIZE),
+			len: 0,
+			#[cfg(test)]
+			record: Recorder::new()
+		}
+	}
+
+	/// Constructs a new, empty two-way cuckoohash table with at least
+	/// the specified capacity.
+	/// 
+	/// # Examples
+	/// ```rust
+	/// use cuckoohash::StandardCuckoo;
+	/// 
+	/// let ctb = StandardCuckoo::with_capacity(1024);
+	/// assert!(ctb.capacity() >= 1024);
+	/// ```
 	pub fn with_capacity(cap: usize) -> Self {
 		let capacity = std::cmp::max(1, cap);
+		let buffer = repeat(Bucket::new())
+				.take(capacity)
+				.collect::<Vec<_>>()
+				.into_boxed_slice();
 		let stash = Vec::with_capacity(DEFAULT_STASH_SIZE);
 
 		Self {
-			buffer: repeat(Bucket::new())
-				.take(capacity)
-				.collect::<Vec<_>>()
-				.into_boxed_slice(),
-			capacity,
+			capacity: buffer.len(),
+			buffer,
 			stash,
 			len: 0,
 			#[cfg(test)]
@@ -33,9 +71,9 @@ impl CuckooHashTable
 		}
 	}
 
-	/// 向Cuckoo Hash表中插入一个元素，如果两个hash位置中有任意一个是空闲的
-	/// 就直接向该位置插入元素。如果两个位置都有元素，就随机选择一个作为牺牲者
-	/// 然后将牺牲者插入到牺牲者的另一个哈希位置中去
+	/// Inserts an element into the cuckoohash table.
+	/// 
+	/// Returns `ture` if successed, or `false` otherwise.
 	pub fn insert(&mut self, data: u32) -> bool {
 		let mut bin = Bin::from_slice(&data.to_le_bytes());
 		let hset = get_two_hash(bin.as_ref(), self.capacity);
@@ -81,7 +119,10 @@ impl CuckooHashTable
 		true
 	}
 
-	/// 判断一个元素是否在 Table 中
+	/// Returns `true` if an element in the table.
+	/// 
+	/// There is a negligible possibility that an element not in the
+	/// table will be recognized as being present in the table.
 	pub fn contains(&self, data: u32) -> bool {
 		let bin = Bin::from_slice(&data.to_le_bytes());
 		let hset = get_two_hash(bin.as_ref(), self.capacity);
@@ -91,8 +132,19 @@ impl CuckooHashTable
 		self.stash.iter().any(|item| item == &bin)
 	}
 
-	pub fn stash_size(&self) -> usize {
+	/// Returns the size of the stash.
+	pub fn stash_len(&self) -> usize {
 		self.stash.len()
+	}
+
+	/// Returns the capacity of the cuckoohash table.
+	pub fn capacity(&self) -> usize {
+		self.capacity
+	}
+
+	/// Returns the number of the elements in the table.
+	pub fn len(&self) -> usize {
+		self.len
 	}
 
 	fn try_put(&mut self, bin: &mut Bin, idx: usize) -> bool {
@@ -129,10 +181,10 @@ mod test {
 		}
 		println!("Check Time: {}ms", start.elapsed().as_millis() - insert_time);
 
-		println!("swell rate: {}", rate);
+		println!("expension rate: {}", rate);
 		println!("table capacity: {}", ctable.capacity);
 		println!("element count: {}", ctable.len);
-		println!("use stash: {}", ctable.stash_size());
+		println!("use stash: {}", ctable.stash_len());
 		println!("record: {:?}", &ctable.record);
 	}
 }
