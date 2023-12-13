@@ -1,5 +1,3 @@
-use crate::utils as ut;
-
 /// 默认元素大小
 const DEFAULT_ELEM_BIT_WIDTH: usize = 32;
 const BIN_SIZE: usize = (DEFAULT_ELEM_BIT_WIDTH + 7) >> 3;
@@ -53,7 +51,7 @@ impl AsRef<[u8]> for Bin {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Bucket {
 	buffer: [Bin; BUCKET_SIZE]
 }
@@ -67,8 +65,8 @@ impl Bucket {
 	}
 
 	/// Check if there are empty `Bin` in the `Bucket`
-	pub fn is_empty(&self) -> bool {
-		self.buffer.iter().any(|bin| bin.is_empty())
+	pub fn get_room(&self) -> Option<usize> {
+		self.buffer.iter().position(|bin| bin.is_empty())
 	}
 
 	/// Check if 'data' is in the Bucket
@@ -79,18 +77,8 @@ impl Bucket {
 
 	/// Insert a `Bin` into `Bucket`, consuming the original `data`
 	/// and assign it with the `data` in the Bin before.
-	pub fn insert(&mut self, bin: &mut Bin) {
-		if BUCKET_SIZE > 1 {
-			for i in 0..BUCKET_SIZE {
-				if self.buffer[i].is_empty() {
-					std::mem::swap(&mut self.buffer[i], bin);
-					return ;
-				}
-			}
-			let victim = ut::get_random(BUCKET_SIZE);
-			std::mem::swap(&mut self.buffer[victim], bin);
-		} else {
-			std::mem::swap(&mut self.buffer[0], bin);
-		}
+	pub fn insert(&mut self, bin: &mut Bin, idx: usize) {
+		debug_assert!(idx < BUCKET_SIZE);
+		std::mem::swap(&mut self.buffer[idx], bin);
 	}
 }

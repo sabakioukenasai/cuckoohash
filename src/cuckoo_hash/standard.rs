@@ -28,6 +28,7 @@ impl CuckooHashTable
 	/// use cuckoohash::StandardCuckoo;
 	/// 
 	/// let ctb = StandardCuckoo::new();
+	/// assert_eq!(ctb.len(), 0);
 	/// ```
 	pub fn new() -> Self {
 		Self {
@@ -71,15 +72,41 @@ impl CuckooHashTable
 		}
 	}
 
-	/// Inserts an element into the cuckoohash table.
+	/// Inserts an element into the cuckoohash table. 
 	/// 
-	/// Returns `ture` if successed, or `false` otherwise.
+	/// Returns `ture` if successfully insert the element into
+	/// buckets, or `false` if collisions occurred and the element
+	/// is stored in the stash.
+	/// 
+	/// # Warning
+	/// Inserting duplicate elements into the cuckoo table will make
+	/// no change to the table and return `true`.
+	/// 
+	/// # Examples
+	/// ```rust
+	/// use cuckoohash::StandardCuckoo;
+	/// 
+	/// let mut ct = StandardCuckoo::new();
+	/// assert!(ct.insert(3));
+	/// assert_eq!(ct.len(), 1);
+	/// assert!(ct.insert(4));
+	/// assert_eq!(ct.len(), 2);
+	/// assert!(ct.insert(3));
+	/// assert_eq!(ct.len(), 2);
+	/// 
+	/// let mut smallct = StandardCuckoo::with_capacity(1);
+	/// 
+	/// assert!(smallct.insert(2));
+	/// assert_eq!(smallct.len(), 1);
+	/// assert!(!smallct.insert(4));
+	/// assert_eq!(smallct.len(), 2);
+	/// ```
 	pub fn insert(&mut self, data: u32) -> bool {
 		let mut bin = Bin::from_slice(&data.to_le_bytes());
 		let hset = get_two_hash(bin.as_ref(), self.capacity);
 		
-		if self.try_put(&mut bin, hset.0) || self.try_put(&mut bin, hset.1) {
-			self.len += 1;
+		if self.try_put(&mut bin, hset.0) 
+		|| self.try_put(&mut bin, hset.1) {
 			return true;
 		}
 
@@ -96,7 +123,7 @@ impl CuckooHashTable
 		};
 
 		for _i in 0..MAX_RELOCATE {
-			self.buffer[victim].insert(&mut bin);
+			self.buffer[victim].insert(&mut bin, 0);
 			if bin.is_empty() {
 				self.len += 1;
 				return true;
@@ -109,10 +136,9 @@ impl CuckooHashTable
 			}
 		}
 
-		if self.buffer[victim].is_empty() {
-			self.buffer[victim].insert(&mut bin);
-		} else {
-			self.stash.push(bin);
+		match self.buffer[victim].get_room() {
+			Some(i) => self.buffer[victim].insert(&mut bin, i),
+			None => { self.stash.push(bin); self.len += 1; return false}
 		}
 
 		self.len += 1;
@@ -148,11 +174,13 @@ impl CuckooHashTable
 	}
 
 	fn try_put(&mut self, bin: &mut Bin, idx: usize) -> bool {
-		if self.buffer[idx].is_empty() {
-			self.buffer[idx].insert(bin);
-			true
-		} else {
-			false
+		match self.buffer[idx].get_room() {
+			Some(i) => {
+				self.buffer[idx].insert(bin, i);
+				self.len += 1;
+				true
+			}
+			None => self.buffer[idx].contains(bin),
 		}
 	}
 }
